@@ -136,9 +136,19 @@ router.post('/webhook', async (req, res) => {
     const signature = req.headers['x-signature']; 
     const secret = process.env.WEBHOOK_SECRET;
 
-    if (!signature || !secret) {
-  return res.status(401).send('Assinatura ausente ou chave inválida');
-}
+      if (!signature || !secret) {
+        return res.status(401).send('Assinatura ausente ou chave inválida');
+      }
+
+      const receivedSignature = signatureHeader
+      .split(',')
+      .find(part => part.trim().startsWith('v1='))
+      ?.split('=')[1];
+
+      if (!receivedSignature) {
+        return res.status(401).send('Assinatura v1 ausente');
+      }
+
       const computedSignature = crypto
         .createHmac('sha256', secret)
         .update(JSON.stringify(payload))
