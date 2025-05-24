@@ -132,42 +132,36 @@ router.post('/webhook', async (req, res) => {
   try {
     const { type, data } = req.body;
 
-    const payload = req.body; 
-    const signature = req.headers['x-signature']; 
+    const signatureHeader = req.headers['x-signature'];
+    const requestId = req.headers['x-request-id'];
+    const dataId = req.query['data.id']; // obtido da URL (query param)
     const secret = process.env.WEBHOOK_SECRET;
 
-      if (!signature || !secret) {
-        return res.status(401).send('Assinatura ausente ou chave inválida');
-      }
+    if (!signatureHeader || !requestId || !dataId || !secret) {
+    return res.status(400).send('Dados obrigatórios ausentes');
+    }
 
-      const receivedSignature = signatureHeader
-      .split(',')
-      .find(part => part.trim().startsWith('v1='))
-      ?.split('=')[1];
+    const parts = signatureHeader.split(',');
+    const ts = parts.find(p => p.trim().startsWith('ts='))?.split('=')[1];
+    const receivedSignature = parts.find(p => p.trim().startsWith('v1='))?.split('=')[1];
 
-      if (!receivedSignature) {
-        return res.status(401).send('Assinatura v1 ausente');
-      }
+    // Monta o "manifest"
+    const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`
 
-      const computedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(payload))
-        .digest('hex');
+    const computedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(manifest)
+    .digest('hex');
 
-      console.log('Assinatura calculada:', computedSignature);
-      console.log('Assinatura recebida:', signature);
+    console.log('Assinatura recebida:', receivedSignature);
+    console.log('Assinatura calculada:', computedSignature);
 
-      // Converte as assinaturas para Buffer
-      const receivedSignatureBuffer = Buffer.from(signature, 'hex');
-      const computedSignatureBuffer = Buffer.from(computedSignature, 'hex');
-
-      // Compara os buffers com segurança, verificando primeiro o tamanho
-      if (
-        receivedSignatureBuffer.length !== computedSignatureBuffer.length ||
-        !crypto.timingSafeEqual(receivedSignatureBuffer, computedSignatureBuffer)
-      ) {
-        return res.status(401).send('Assinatura inválida');
-      }
+    if (
+    receivedBuffer.length !== computedBuffer.length ||
+    !crypto.timingSafeEqual(receivedBuffer, computedBuffer)
+    ) {
+      return res.status(401).send('Assinatura inválida');
+    }
     
     // Verificar se é uma notificação de pagamento
     if (type === 'payment') {
