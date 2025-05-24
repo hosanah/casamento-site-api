@@ -28,8 +28,8 @@ const PORT = process.env.PORT || 3001;
 const corsOptions = {
   origin: [
     'https://mariliaeiago.com.br', 
-    'https://www.mercadopago.com.br/',
-    'https://www.mariliaeiago.com.br'
+    'https://www.mercadopago.com.br',
+    'https://www.mariliaeiago.com.br',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],

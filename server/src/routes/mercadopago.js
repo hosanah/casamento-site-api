@@ -102,7 +102,6 @@ router.post('/create-preference', async (req, res) => {
         pending: `https://www.mariliaeiago.com.br/presentes/confirmacao?order_id=${order.id}`,
       },
       auto_return: 'approved',
-      notification_url: notificationUrl || `https://n8n2.zapchatbr.com/webhook/89215726-a2d4-4b7d-95bb-f40cb19f24d6`,
       statement_descriptor: siteTitle
     };
 
