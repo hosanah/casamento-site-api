@@ -134,7 +134,7 @@ router.put('/:id', protectNonGetRoutes, async (req, res) => {
         description,
         price: parseFloat(price),
         image,
-        stock
+        stock: parseInt(stock, 10)
       }
     });
     

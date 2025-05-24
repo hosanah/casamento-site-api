@@ -1,17 +1,18 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const crypto = require('crypto');
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Função para obter as configurações do Mercado Pago
 async function getMercadoPagoConfig() {
   const config = await prisma.config.findFirst();
-  
+
   if (!config || !config.mercadoPagoAccessToken) {
     throw new Error('Configurações do Mercado Pago não encontradas');
   }
-  
+
   return {
     accessToken: config.mercadoPagoAccessToken,
     publicKey: config.mercadoPagoPublicKey,
@@ -20,7 +21,7 @@ async function getMercadoPagoConfig() {
   };
 }
 
-// Inicializar o SDK do Mercado Pago com o token de acesso
+// Inicializar o SDK do Mercado Pago
 async function initMercadoPago() {
   try {
     const { accessToken } = await getMercadoPagoConfig();
@@ -31,7 +32,7 @@ async function initMercadoPago() {
   }
 }
 
-// Criar preferência de pagamento para um presente
+// Criar preferência de pagamento
 router.post('/create-preference', async (req, res) => {
   try {
     const { presentId, customerName, customerEmail } = req.body;
@@ -40,14 +41,10 @@ router.post('/create-preference', async (req, res) => {
       return res.status(400).json({ message: 'ID do presente e nome do cliente são obrigatórios' });
     }
 
-    // Obter configurações do Mercado Pago
     const { accessToken, notificationUrl } = await getMercadoPagoConfig();
-
-    // Inicializar SDK com novo formato
     const mercadoPagoClient = new MercadoPagoConfig({ accessToken });
     const preferenceClient = new Preference(mercadoPagoClient);
 
-    // Buscar o presente
     const present = await prisma.present.findUnique({
       where: { id: parseInt(presentId) }
     });
@@ -63,7 +60,6 @@ router.post('/create-preference', async (req, res) => {
     const config = await prisma.config.findFirst();
     const siteTitle = config?.siteTitle || 'Casamento';
 
-    // Criar pedido
     const order = await prisma.order.create({
       data: {
         presentId: present.id,
@@ -74,8 +70,7 @@ router.post('/create-preference', async (req, res) => {
     });
 
     const protocol = req.protocol || 'https';
-    const host = req.get('host') || 'localhost:3000'; 
-    const baseUrl = `${protocol}://${host}`;
+    const host = req.get('host') || 'localhost:3000';
 
     const preference = {
       items: [
@@ -105,7 +100,6 @@ router.post('/create-preference', async (req, res) => {
 
     const response = await preferenceClient.create({ body: preference });
 
-    // Atualizar pedido
     await prisma.order.update({
       where: { id: order.id },
       data: {
@@ -125,58 +119,65 @@ router.post('/create-preference', async (req, res) => {
   }
 });
 
-// Webhook para receber notificações do Mercado Pago
-router.post('/webhook', async (req, res) => {
+// Webhook com verificação de assinatura HMAC
+router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
   try {
-    const { type, data } = req.body;
-    
-    // Verificar se é uma notificação de pagamento
+    const signature = req.headers['x-signature'];
+    const secret = process.env.WEBHOOK_SECRET;
+
+    if (!signature || !secret) {
+      return res.status(401).send('Assinatura ausente ou chave inválida');
+    }
+
+    const computedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(req.body)
+      .digest('hex');
+
+    if (computedSignature !== signature) {
+      return res.status(401).send('Assinatura inválida');
+    }
+
+    const payload = JSON.parse(req.body.toString());
+
+    const { type, data } = payload;
+
     if (type === 'payment') {
       const paymentId = data.id;
-      
-      // Inicializar o SDK do Mercado Pago
+
       const mercadoPagoClient = await initMercadoPago();
       if (!mercadoPagoClient) {
         return res.status(500).json({ message: 'Erro ao inicializar Mercado Pago' });
       }
-      
-      // Inicializar o cliente de pagamento
+
       const paymentClient = new Payment(mercadoPagoClient);
-      
-      // Buscar informações do pagamento usando o novo formato do SDK
       const payment = await paymentClient.get({ id: paymentId });
-      
+
       if (payment && payment.id) {
         const { external_reference, status } = payment;
-        
-        // Extrair o ID do pedido do external_reference
         const orderId = external_reference.replace('order-', '');
-        
-        // Atualizar o status do pedido
+
         await prisma.order.update({
           where: { id: parseInt(orderId) },
           data: {
             status: status === 'approved' ? 'paid' : status
           }
         });
-        
-        // Se o pagamento foi aprovado, reduzir o estoque do presente e registrar a venda
+
         if (status === 'approved') {
           const order = await prisma.order.findUnique({
             where: { id: parseInt(orderId) },
             include: { present: true }
           });
-          
+
           if (order && order.present) {
-            // Reduzir o estoque do presente
             await prisma.present.update({
               where: { id: order.present.id },
               data: {
                 stock: Math.max(0, order.present.stock - 1)
               }
             });
-            
-            // Registrar a venda na nova tabela Sale
+
             await prisma.sale.create({
               data: {
                 presentId: order.present.id,
@@ -193,28 +194,28 @@ router.post('/webhook', async (req, res) => {
         }
       }
     }
-    
+
     res.status(200).send('OK');
   } catch (error) {
-    console.error('Erro ao processar webhook do Mercado Pago:', error);
-    res.status(500).json({ message: 'Erro ao processar notificação', error: error.message });
+    console.error('Erro no webhook Mercado Pago:', error);
+    res.status(500).json({ message: 'Erro no webhook', error: error.message });
   }
 });
 
-// Verificar status de um pedido
+// Verificação de pedido
 router.get('/order/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const order = await prisma.order.findUnique({
       where: { id: parseInt(id) },
       include: { present: true }
     });
-    
+
     if (!order) {
       return res.status(404).json({ message: 'Pedido não encontrado' });
     }
-    
+
     res.json(order);
   } catch (error) {
     console.error('Erro ao buscar pedido:', error);
