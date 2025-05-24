@@ -4,6 +4,8 @@ const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const crypto = require('crypto');
 const router = express.Router();
 const prisma = new PrismaClient();
+const dotenv = require('dotenv');
+dotenv.config();
 
 // Função para obter as configurações do Mercado Pago
 async function getMercadoPagoConfig() {
