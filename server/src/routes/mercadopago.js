@@ -137,18 +137,27 @@ router.post('/webhook', async (req, res) => {
     const secret = process.env.WEBHOOK_SECRET;
 
     if (!signature || !secret) {
-      return res.status(401).send('Assinatura ausente ou chave inválida');
-    }
+  return res.status(401).send('Assinatura ausente ou chave inválida');
+}
+      const computedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(JSON.stringify(payload))
+        .digest('hex');
 
-    const computedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(JSON.stringify(payload))
-      .digest('hex');
-      console.log(computedSignature);
+      console.log('Assinatura calculada:', computedSignature);
+      console.log('Assinatura recebida:', signature);
 
-    if (!crypto.timingSafeEqual(expectedSignature, receivedSignature)) {
-      return res.status(401).send('Assinatura inválida');
-    }
+      // Converte as assinaturas para Buffer
+      const receivedSignatureBuffer = Buffer.from(signature, 'hex');
+      const computedSignatureBuffer = Buffer.from(computedSignature, 'hex');
+
+      // Compara os buffers com segurança, verificando primeiro o tamanho
+      if (
+        receivedSignatureBuffer.length !== computedSignatureBuffer.length ||
+        !crypto.timingSafeEqual(receivedSignatureBuffer, computedSignatureBuffer)
+      ) {
+        return res.status(401).send('Assinatura inválida');
+      }
     
     // Verificar se é uma notificação de pagamento
     if (type === 'payment') {
