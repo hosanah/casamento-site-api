@@ -135,8 +135,6 @@ router.post('/webhook', async (req, res) => {
     const payload = req.body; 
     const signature = req.headers['x-signature']; 
     const secret = process.env.WEBHOOK_SECRET;
-    console.log(signature);
-    console.log(secret);
 
     if (!signature || !secret) {
       return res.status(401).send('Assinatura ausente ou chave inválida');
@@ -148,8 +146,7 @@ router.post('/webhook', async (req, res) => {
       .digest('hex');
       console.log(computedSignature);
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(computedSignature))) {
-      
+    if (!crypto.timingSafeEqual(expectedSignature, receivedSignature)) {
       return res.status(401).send('Assinatura inválida');
     }
     
