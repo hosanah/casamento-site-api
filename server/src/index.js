@@ -26,9 +26,9 @@ const PORT = process.env.PORT || 3001;
 
 // Middlewares
 const corsOptions = {
-  origin: ['https://casamento.finderdata.com.br', 
+  origin: [
     'https://mariliaeiago.com.br', 
-    'http://localhost:5173',
+    'https://www.mercadopago.com.br/',
     'https://www.mariliaeiago.com.br'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
