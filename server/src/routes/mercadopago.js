@@ -132,7 +132,8 @@ router.post('/webhook', async (req, res) => {
   try {
     const { type, data } = req.body;
 
-    const signature = req.headers['x-signature'];
+    const payload = req.body; 
+    const signature = req.headers['x-signature']; 
     const secret = process.env.WEBHOOK_SECRET;
 
     if (!signature || !secret) {
@@ -141,10 +142,10 @@ router.post('/webhook', async (req, res) => {
 
     const computedSignature = crypto
       .createHmac('sha256', secret)
-      .update(signature)
+      .update(JSON.stringify(payload))
       .digest('hex');
 
-    if (signature !== secret) {
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(computedSignature))) {
       return res.status(401).send('Assinatura inválida');
     }
     
