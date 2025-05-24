@@ -2,6 +2,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
 const router = express.Router();
+const crypto = require('crypto');
 const prisma = new PrismaClient();
 const dotenv = require('dotenv');
 dotenv.config();
@@ -137,6 +138,15 @@ router.post('/webhook', async (req, res) => {
 
     if (!signature || !secret) {
       return res.status(401).send('Assinatura ausente ou chave inválida');
+    }
+
+    const computedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(signature)
+      .digest('hex');
+
+    if (signature !== signature) {
+      return res.status(401).send('Assinatura inválida');
     }
     
     // Verificar se é uma notificação de pagamento
