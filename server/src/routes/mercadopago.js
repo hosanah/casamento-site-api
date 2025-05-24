@@ -156,6 +156,10 @@ router.post('/webhook', async (req, res) => {
     console.log('Assinatura recebida:', receivedSignature);
     console.log('Assinatura calculada:', computedSignature);
 
+    // Validação segura
+    const receivedBuffer = Buffer.from(receivedSignature, 'hex');
+    const computedBuffer = Buffer.from(computedSignature, 'hex');
+
     if (
     receivedBuffer.length !== computedBuffer.length ||
     !crypto.timingSafeEqual(receivedBuffer, computedBuffer)
