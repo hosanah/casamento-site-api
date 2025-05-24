@@ -145,7 +145,7 @@ router.post('/webhook', async (req, res) => {
       .update(signature)
       .digest('hex');
 
-    if (signature !== signature) {
+    if (signature !== secret) {
       return res.status(401).send('Assinatura inválida');
     }
     
