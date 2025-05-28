@@ -54,6 +54,7 @@ model Present {
   updatedAt   DateTime @updatedAt
   orders      Order[]
   sales       Sale[]
+  cartItems   CartItem[]
 }
 
 model Order {
@@ -114,10 +115,38 @@ model Sale {
   customerName  String
   customerEmail String?
   amount        Float
+  quantity      Int      @default(1)
   paymentMethod String    // "mercadopago", "pix", etc.
   paymentId     String?   // ID externo do sistema de pagamento
   status        String    @default("pending") // pending, paid, cancelled
   notes         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// Novos modelos para o carrinho de compras
+model Cart {
+  id            Int        @id @default(autoincrement())
+  customerName  String
+  customerEmail String     @default("")
+  paymentId     String?    // ID externo do Mercado Pago
+  status        String     @default("pending") // pending, paid, cancelled
+  items         CartItem[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  presentId Int
+  present   Present  @relation(fields: [presentId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+  @@index([presentId])
 }

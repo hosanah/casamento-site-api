@@ -127,6 +127,125 @@ router.post('/create-preference', async (req, res) => {
   }
 });
 
+// Nova rota para criar preferência de pagamento para múltiplos presentes (carrinho)
+router.post('/create-cart-preference', async (req, res) => {
+  try {
+    const { items, customerName, customerEmail } = req.body;
+
+    if (!items || !items.length || !customerName) {
+      return res.status(400).json({ 
+        message: 'Lista de presentes e nome do cliente são obrigatórios' 
+      });
+    }
+
+    // Obter configurações do Mercado Pago
+    const { accessToken } = await getMercadoPagoConfig();
+
+    // Inicializar SDK com novo formato
+    const mercadoPagoClient = new MercadoPagoConfig({ accessToken });
+    const preferenceClient = new Preference(mercadoPagoClient);
+
+    const config = await prisma.config.findFirst();
+    const siteTitle = config?.siteTitle || 'Casamento';
+
+    // Criar um grupo de pedidos (cart)
+    const cart = await prisma.cart.create({
+      data: {
+        customerName,
+        customerEmail: customerEmail || '',
+        status: 'pending'
+      }
+    });
+
+    // Array para armazenar os itens do Mercado Pago
+    const preferenceItems = [];
+    
+    // Processar cada item do carrinho
+    for (const item of items) {
+      const presentId = parseInt(item.presentId);
+      const quantity = item.quantity || 1;
+      
+      // Buscar o presente
+      const present = await prisma.present.findUnique({
+        where: { id: presentId }
+      });
+
+      if (!present) {
+        continue; // Pular presentes não encontrados
+      }
+
+      if (present.stock < quantity) {
+        return res.status(400).json({ 
+          message: `O presente "${present.name}" não tem estoque suficiente` 
+        });
+      }
+
+      // Criar item de pedido vinculado ao carrinho
+      await prisma.cartItem.create({
+        data: {
+          cartId: cart.id,
+          presentId: present.id,
+          quantity,
+          price: present.price
+        }
+      });
+
+      // Adicionar item à preferência do Mercado Pago
+      preferenceItems.push({
+        id: `present-${present.id}`,
+        title: present.name,
+        description: present.description || `Presente para ${siteTitle}`,
+        quantity,
+        currency_id: 'BRL',
+        unit_price: present.price
+      });
+    }
+
+    if (preferenceItems.length === 0) {
+      return res.status(400).json({ message: 'Nenhum presente válido no carrinho' });
+    }
+
+    const preference = {
+      items: preferenceItems,
+      payer: {
+        name: customerName,
+        email: customerEmail || 'cliente@exemplo.com'
+      },
+      external_reference: `cart-${cart.id}`,
+      back_urls: {
+        success: `https://www.mariliaeiago.com.br/presentes/confirmacao?cart_id=${cart.id}`,
+        failure: `https://www.mariliaeiago.com.br/presentes/confirmacao?cart_id=${cart.id}`,
+        pending: `https://www.mariliaeiago.com.br/presentes/confirmacao?cart_id=${cart.id}`,
+      },
+      auto_return: 'approved',
+      statement_descriptor: siteTitle
+    };
+
+    const response = await preferenceClient.create({ body: preference });
+
+    // Atualizar carrinho
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        paymentId: response.id
+      }
+    });
+
+    res.json({
+      id: response.id,
+      init_point: response.init_point,
+      sandbox_init_point: response.sandbox_init_point,
+      cartId: cart.id
+    });
+  } catch (error) {
+    console.error('Erro ao criar preferência de pagamento para carrinho:', error);
+    res.status(500).json({ 
+      message: 'Erro ao processar pagamento do carrinho', 
+      error: error.message 
+    });
+  }
+});
+
 // Webhook para receber notificações do Mercado Pago
 router.post('/webhook', async (req, res) => {
   try {
@@ -186,46 +305,100 @@ router.post('/webhook', async (req, res) => {
       if (payment && payment.id) {
         const { external_reference, status } = payment;
         
-        // Extrair o ID do pedido do external_reference
-        const orderId = external_reference.replace('order-', '');
-        
-        // Atualizar o status do pedido
-        await prisma.order.update({
-          where: { id: parseInt(orderId) },
-          data: {
-            status: status === 'approved' ? 'paid' : status
-          }
-        });
-        
-        // Se o pagamento foi aprovado, reduzir o estoque do presente e registrar a venda
-        if (status === 'approved') {
-          const order = await prisma.order.findUnique({
+        // Verificar se é um pedido individual ou um carrinho
+        if (external_reference.startsWith('order-')) {
+          // Pedido individual
+          const orderId = external_reference.replace('order-', '');
+          
+          // Atualizar o status do pedido
+          await prisma.order.update({
             where: { id: parseInt(orderId) },
-            include: { present: true }
+            data: {
+              status: status === 'approved' ? 'paid' : status
+            }
           });
           
-          if (order && order.present) {
-            // Reduzir o estoque do presente
-            await prisma.present.update({
-              where: { id: order.present.id },
-              data: {
-                stock: Math.max(0, order.present.stock - 1)
+          // Se o pagamento foi aprovado, reduzir o estoque do presente e registrar a venda
+          if (status === 'approved') {
+            const order = await prisma.order.findUnique({
+              where: { id: parseInt(orderId) },
+              include: { present: true }
+            });
+            
+            if (order && order.present) {
+              // Reduzir o estoque do presente
+              await prisma.present.update({
+                where: { id: order.present.id },
+                data: {
+                  stock: Math.max(0, order.present.stock - 1)
+                }
+              });
+              
+              // Registrar a venda na nova tabela Sale
+              await prisma.sale.create({
+                data: {
+                  presentId: order.present.id,
+                  customerName: order.customerName,
+                  customerEmail: order.customerEmail,
+                  amount: order.present.price,
+                  paymentMethod: 'mercadopago',
+                  paymentId: payment.id.toString(),
+                  status: 'paid',
+                  notes: `Pagamento aprovado via Mercado Pago. ID do pedido: ${orderId}`
+                }
+              });
+            }
+          }
+        } else if (external_reference.startsWith('cart-')) {
+          // Carrinho de compras
+          const cartId = external_reference.replace('cart-', '');
+          
+          // Atualizar o status do carrinho
+          await prisma.cart.update({
+            where: { id: parseInt(cartId) },
+            data: {
+              status: status === 'approved' ? 'paid' : status
+            }
+          });
+          
+          // Se o pagamento foi aprovado, processar todos os itens do carrinho
+          if (status === 'approved') {
+            const cart = await prisma.cart.findUnique({
+              where: { id: parseInt(cartId) },
+              include: { 
+                items: {
+                  include: { present: true }
+                }
               }
             });
             
-            // Registrar a venda na nova tabela Sale
-            await prisma.sale.create({
-              data: {
-                presentId: order.present.id,
-                customerName: order.customerName,
-                customerEmail: order.customerEmail,
-                amount: order.present.price,
-                paymentMethod: 'mercadopago',
-                paymentId: payment.id.toString(),
-                status: 'paid',
-                notes: `Pagamento aprovado via Mercado Pago. ID do pedido: ${orderId}`
+            if (cart && cart.items.length > 0) {
+              // Processar cada item do carrinho
+              for (const item of cart.items) {
+                // Reduzir o estoque do presente
+                await prisma.present.update({
+                  where: { id: item.present.id },
+                  data: {
+                    stock: Math.max(0, item.present.stock - item.quantity)
+                  }
+                });
+                
+                // Registrar a venda na tabela Sale
+                await prisma.sale.create({
+                  data: {
+                    presentId: item.present.id,
+                    customerName: cart.customerName,
+                    customerEmail: cart.customerEmail,
+                    quantity: item.quantity,
+                    amount: item.price * item.quantity,
+                    paymentMethod: 'mercadopago',
+                    paymentId: payment.id.toString(),
+                    status: 'paid',
+                    notes: `Pagamento aprovado via Mercado Pago. ID do carrinho: ${cartId}`
+                  }
+                });
               }
-            });
+            }
           }
         }
       }
@@ -256,6 +429,31 @@ router.get('/order/:id', async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar pedido:', error);
     res.status(500).json({ message: 'Erro ao buscar pedido', error: error.message });
+  }
+});
+
+// Verificar status de um carrinho
+router.get('/cart/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const cart = await prisma.cart.findUnique({
+      where: { id: parseInt(id) },
+      include: { 
+        items: {
+          include: { present: true }
+        }
+      }
+    });
+    
+    if (!cart) {
+      return res.status(404).json({ message: 'Carrinho não encontrado' });
+    }
+    
+    res.json(cart);
+  } catch (error) {
+    console.error('Erro ao buscar carrinho:', error);
+    res.status(500).json({ message: 'Erro ao buscar carrinho', error: error.message });
   }
 });
 
