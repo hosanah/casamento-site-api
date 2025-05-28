@@ -148,7 +148,7 @@ router.put('/:id', authenticateJWT, async (req, res) => {
         title,
         text,
         image,
-        order: order !== undefined ? order : existingEvent.order
+        order: parseInt(order) !== undefined ? parseInt(order) : existingEvent.order
       }
     });
     
