@@ -48,5 +48,6 @@ USER node
 EXPOSE 3001
 
 # Executar migrations e iniciar o servidor diretamente no CMD
-CMD npx prisma migrate dev --name add_cart_tables && npm start
+#CMD npx prisma migrate dev --name add_cart_tables && npm start
 #CMD npm start 
+CMD npx prisma migrate deploy && npx prisma db seed && npm start
