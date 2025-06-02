@@ -110,7 +110,7 @@ router.post('/', protectNonGetRoutes, async (req, res) => {
         description,
         price: parseFloat(price),
         image,
-        stock: stock || 1
+        stock: parseInt(stock) || 1
       }
     });
     
