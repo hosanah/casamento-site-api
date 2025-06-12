@@ -39,7 +39,7 @@ RUN mkdir -p ./database && \
     chmod -R 755 /app
 
 # Evita sobrescrever uploads
-RUN mkdir -p /app/public/uploads && \
+RUN mkdir -p ./public/uploads && \
     chown -R node:node /app && \
     chmod -R 755 /app
 
