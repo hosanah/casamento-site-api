@@ -34,9 +34,16 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src ./src
 
 # Criar diretório para o banco de dados
-RUN mkdir -p /app/database /app/public/uploads && \
+RUN mkdir -p \
+    /app/database \
+    /app/public/uploads/pix \
+    /app/public/uploads/story \
+    /app/public/uploads/presentes \
+    /app/public/uploads/background \
+    /app/public/uploads/album && \
     chown -R node:node /app && \
     chmod -R 755 /app
+
 
 
 # Definir variáveis de ambiente padrão
