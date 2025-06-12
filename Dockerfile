@@ -39,7 +39,7 @@ RUN mkdir -p \
     /app/public/uploads/pix \
     /app/public/uploads/story \
     /app/public/uploads/presentes \
-    /app/public/uploads/background \
+    /app/public/uploads/backgrounds \
     /app/public/uploads/album && \
     chown -R node:node /app && \
     chmod -R 755 /app
