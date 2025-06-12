@@ -38,6 +38,11 @@ RUN mkdir -p ./database && \
     chown -R node:node /app && \
     chmod -R 755 /app
 
+# Evita sobrescrever uploads
+RUN mkdir -p /app/public/uploads && \
+    chown -R node:node /app && \
+    chmod -R 755 /app
+
 # Definir variáveis de ambiente padrão
 ENV PORT=3001 \
     DATABASE_URL="file:/app/database/database.sqlite" \
