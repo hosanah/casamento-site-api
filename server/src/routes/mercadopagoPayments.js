@@ -77,8 +77,12 @@ router.get('/', async (req, res) => {
             status
           }
         });
-      } else if (existing.status !== status) {
-        await prisma.sale.update({ where: { id: existing.id }, data: { status } });
+      } else {
+        const updateData = { status };
+        // Sempre atualiza o nome e email do cliente para refletir o pagamento mais recente
+        updateData.customerName = cliente;
+        updateData.customerEmail = pay.payer?.email || '';
+        await prisma.sale.update({ where: { id: existing.id }, data: updateData });
       }
     }
 

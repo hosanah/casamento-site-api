@@ -57,6 +57,8 @@ describe('Mercado Pago payments route', () => {
     const sales = await prisma.sale.findMany({ orderBy: { paymentId: 'asc' } });
     expect(sales.length).toBe(3);
     expect(sales[0].paymentMethod).toBe('pix');
+    expect(sales[0].customerName).toBe('John');
+    expect(sales[0].customerEmail).toBe('john@example.com');
     expect(sales[0].status).toBe('paid');
     expect(sales[1].status).toBe('pending');
     expect(sales[2].status).toBe('cancelled');
