@@ -7,26 +7,13 @@ const prisma = new PrismaClient();
 const dotenv = require('dotenv');
 dotenv.config();
 
-// Função para obter as configurações do Mercado Pago
-async function getMercadoPagoConfig() {
-  const config = await prisma.config.findFirst();
-  
-  if (!config || !config.mercadoPagoAccessToken) {
-    throw new Error('Configurações do Mercado Pago não encontradas');
-  }
-  
-  return {
-    accessToken: config.mercadoPagoAccessToken,
-    publicKey: config.mercadoPagoPublicKey,
-    webhookUrl: config.mercadoPagoWebhookUrl,
-    notificationUrl: config.mercadoPagoNotificationUrl
-  };
-}
+const { getMercadoPagoConfig } = require('../utils/mercadopagoConfig');
+
 
 // Inicializar o SDK do Mercado Pago com o token de acesso
 async function initMercadoPago() {
   try {
-    const { accessToken } = await getMercadoPagoConfig();
+    const { accessToken } = await getMercadoPagoConfig(prisma);
     return new MercadoPagoConfig({ accessToken });
   } catch (error) {
     console.error('Erro ao inicializar Mercado Pago:', error);
@@ -44,7 +31,7 @@ router.post('/create-preference', async (req, res) => {
     }
 
     // Obter configurações do Mercado Pago
-    const { accessToken, notificationUrl } = await getMercadoPagoConfig();
+    const { accessToken, notificationUrl } = await getMercadoPagoConfig(prisma);
 
     // Inicializar SDK com novo formato
     const mercadoPagoClient = new MercadoPagoConfig({ accessToken });
@@ -139,7 +126,7 @@ router.post('/create-cart-preference', async (req, res) => {
     }
 
     // Obter configurações do Mercado Pago
-    const { accessToken } = await getMercadoPagoConfig();
+    const { accessToken } = await getMercadoPagoConfig(prisma);
 
     // Inicializar SDK com novo formato
     const mercadoPagoClient = new MercadoPagoConfig({ accessToken });
