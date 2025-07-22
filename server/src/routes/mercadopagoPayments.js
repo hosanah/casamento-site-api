@@ -11,12 +11,14 @@ function mapMercadoPagoStatus(status) {
     case 'paid':
       return 'paid';
     case 'pending':
+    case 'opened':
     case 'in_process':
     case 'authorized':
       return 'pending';
     case 'cancelled':
     case 'rejected':
     case 'refunded':
+    case 'closed':
     case 'charged_back':
       return 'cancelled';
     default:
@@ -61,7 +63,6 @@ router.get('/', async (req, res) => {
       }
 
       const payment = await paymentDetailRes.json();
-      if (payment.status !== 'approved') continue;
 
       const paymentId = payment.id.toString();
       const valor = payment.transaction_amount || 0;
