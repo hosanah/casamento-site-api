@@ -181,7 +181,7 @@ router.put('/', authenticateJWT, async (req, res) => {
       mercadoPagoAccessToken,
       mercadoPagoWebhookUrl,
       mercadoPagoNotificationUrl,
-      pixQrCodeImage 
+      pixQrCodeImage
     } = req.body;
     
     // Garantir que exista apenas um registro de configuração
@@ -207,7 +207,7 @@ router.put('/', authenticateJWT, async (req, res) => {
         pixQrCodeImage: pixQrCodeImage || existingConfig.pixQrCodeImage
       }
     });
-    
+
     // Remover tokens sensíveis da resposta
     const safeConfig = { ...config };
     safeConfig.mercadoPagoAccessToken = undefined;
