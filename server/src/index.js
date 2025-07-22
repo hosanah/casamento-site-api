@@ -10,6 +10,7 @@ const configRoutes = require('./routes/config');
 const presentesRoutes = require('./routes/presentes');
 const rsvpRoutes = require('./routes/rsvp');
 const mercadoPagoRoutes = require('./routes/mercadopago');
+const mercadolivreRoutes = require('./routes/mercadolivre');
 const albumRoutes = require('./routes/album');
 const contentRoutes = require('./routes/content');
 const storyRoutes = require('./routes/storyEvents');
@@ -49,6 +50,7 @@ app.use(express.static(path.resolve(process.cwd(), 'public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/rsvp', rsvpRoutes);
 app.use('/api/mercadopago', mercadoPagoRoutes);
+app.use('/api/mercadolivre', mercadolivreRoutes);
 app.use('/api/config', configRoutes); // Agora totalmente pública, proteção será feita internamente
 app.use('/api/background-images', backgroundImagesRoutes); // Parcialmente protegida (GET público)
 
