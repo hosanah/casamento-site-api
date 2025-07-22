@@ -70,11 +70,11 @@ router.get('/', async (req, res) => {
       const createdAt = new Date(payment.date_created);
 
       // 🔍 Buscar presente pelo description
-      const description = payment.additional_info?.items?.[0]?.description?.trim() || '';
+      const description = payment.additional_info?.items?.[0]?.title?.trim() || '';
       
       const present = await prisma.present.findFirst({
           where: {
-            description: {
+            name: {
               contains: description.toLowerCase()
           }
         }
