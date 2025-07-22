@@ -71,11 +71,17 @@ router.get('/', async (req, res) => {
 
       // 🔍 Buscar presente pelo description
       const description = payment.additional_info?.items?.[0]?.description?.trim() || '';
+      
       const present = await prisma.present.findFirst({
-        where: { description: { equals: description } }
+          where: {
+            description: {
+              contains: description.toLowerCase()
+          }
+        }
       });
 
-      const presentId = present?.id || 1; // fallback para 1 se não encontrado
+      const presentId = present?.id ?? 1;
+
       const quantity = parseInt(payment.additional_info?.items?.[0]?.quantity || 1);
 
       // 👤 Cliente
@@ -101,6 +107,7 @@ router.get('/', async (req, res) => {
         await prisma.sale.update({
           where: { id: existing.id },
           data: {
+            presentId,
             status,
             customerName: cliente,
             customerEmail: clienteEmail
