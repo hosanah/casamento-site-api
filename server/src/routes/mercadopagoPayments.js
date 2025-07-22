@@ -4,6 +4,26 @@ const { PrismaClient } = require('@prisma/client');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Converte status do Mercado Pago para os status permitidos em Sale
+function mapMercadoPagoStatus(status) {
+  switch ((status || '').toLowerCase()) {
+    case 'approved':
+    case 'accredited':
+      return 'paid';
+    case 'pending':
+    case 'in_process':
+    case 'authorized':
+      return 'pending';
+    case 'cancelled':
+    case 'rejected':
+    case 'refunded':
+    case 'charged_back':
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
+
 // Obtém as credenciais do Mercado Pago salvas na tabela Config
 async function getMercadoPagoConfig() {
   const config = await prisma.config.findFirst();
@@ -33,7 +53,7 @@ router.get('/', async (req, res) => {
       const paymentId = pay.id.toString();
       const valor = pay.transaction_amount || 0;
       const metodo = pay.payment_method_id || pay.payment_type_id || 'unknown';
-      const status = pay.status || 'pending';
+      const status = mapMercadoPagoStatus(pay.status);
       const cliente = pay.payer?.first_name || pay.payer?.email || 'Mercado Pago';
       const presentId = parseInt(
         pay.metadata?.presentId ||
