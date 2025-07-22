@@ -4,19 +4,12 @@ const { PrismaClient } = require('@prisma/client');
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Obtém as credenciais do Mercado Pago salvas na tabela Config
-async function getMercadoPagoConfig() {
-  const config = await prisma.config.findFirst();
-  if (!config || !config.mercadoPagoAccessToken) {
-    throw new Error('Configurações do Mercado Pago não encontradas');
-  }
-  return { accessToken: config.mercadoPagoAccessToken };
-}
+const { getMercadoPagoConfig } = require('../utils/mercadopagoConfig');
 
 // Sincroniza pagamentos do Mercado Pago armazenando na tabela Sale
 router.get('/', async (req, res) => {
   try {
-    const { accessToken } = await getMercadoPagoConfig();
+    const { accessToken } = await getMercadoPagoConfig(prisma);
     const response = await fetch('https://api.mercadopago.com/v1/payments/search', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
