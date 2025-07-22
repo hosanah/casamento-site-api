@@ -41,5 +41,7 @@ describe('Mercado Pago payments route', () => {
     const sales = await prisma.sale.findMany({ where: { paymentId: '1' } });
     expect(sales.length).toBe(1);
     expect(sales[0].paymentMethod).toBe('pix');
+    expect(sales[0].customerName).toBe('John');
+    expect(sales[0].customerEmail).toBe('john@example.com');
   });
 });
