@@ -2,15 +2,15 @@
 
 API para o site de casamento. Execute `npm install` dentro da pasta `server` para instalar as dependências.
 
-## Rota Mercado Livre
+## Rota Mercado Pago
 
-A API possui uma rota para sincronizar pedidos do Mercado Livre. Antes de usar defina as variáveis de ambiente `MERCADOLIVRE_ACCESS_TOKEN` e `MERCADOLIVRE_USER_ID`.
+A API possui uma rota para sincronizar pagamentos registrados no Mercado Pago. O token de acesso é obtido na tabela `Config` do banco de dados.
 
 ```
-GET /api/mercadolivre/orders
+GET /api/mercadopago/payments
 ```
 
-Essa chamada busca os pedidos usando o token e ID do usuário cadastrados e registra cada pedido na tabela `Sale` com `paymentMethod` igual a `mercadolivre`.
+Essa chamada busca os pagamentos usando o token configurado e registra cada um na tabela `Sale` com o método informado pelo Mercado Pago.
 
 Para rodar os testes utilize:
 
