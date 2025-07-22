@@ -20,7 +20,7 @@ describe('Mercado Pago payments route', () => {
     await prisma.$disconnect();
   });
 
-  test('fetches payments and stores sales', async () => {
+  test('fetches payments and stores sales with normalized status', async () => {
     nock('https://api.mercadopago.com')
       .get('/v1/payments/search')
       .reply(200, {
@@ -32,14 +32,33 @@ describe('Mercado Pago payments route', () => {
             payment_method_id: 'pix',
             payer: { first_name: 'John', email: 'john@example.com' },
             metadata: { presentId: '1', quantity: 1 }
+          },
+          {
+            id: 2,
+            transaction_amount: 20,
+            status: 'pending',
+            payment_method_id: 'credit_card',
+            payer: { first_name: 'Jane', email: 'jane@example.com' },
+            metadata: { presentId: '2', quantity: 1 }
+          },
+          {
+            id: 3,
+            transaction_amount: 15,
+            status: 'rejected',
+            payment_method_id: 'pix',
+            payer: { first_name: 'Bob', email: 'bob@example.com' },
+            metadata: { presentId: '3', quantity: 1 }
           }
         ]
       });
 
     const res = await request(app).get('/api/mercadopago/payments');
     expect(res.statusCode).toBe(200);
-    const sales = await prisma.sale.findMany({ where: { paymentId: '1' } });
-    expect(sales.length).toBe(1);
+    const sales = await prisma.sale.findMany({ orderBy: { paymentId: 'asc' } });
+    expect(sales.length).toBe(3);
     expect(sales[0].paymentMethod).toBe('pix');
+    expect(sales[0].status).toBe('paid');
+    expect(sales[1].status).toBe('pending');
+    expect(sales[2].status).toBe('cancelled');
   });
 });
