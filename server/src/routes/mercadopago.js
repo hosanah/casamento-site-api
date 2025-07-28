@@ -88,6 +88,9 @@ router.post('/create-preference', async (req, res) => {
         failure: `https://www.mariliaeiago.com.br/presentes/confirmacao?order_id=${order.id}`,
         pending: `https://www.mariliaeiago.com.br/presentes/confirmacao?order_id=${order.id}`,
       },
+      payment_methods: {
+        installments: 12 // Permitir parcelamento em até 12x
+      },
       auto_return: 'approved',
       statement_descriptor: siteTitle
     };
@@ -203,6 +206,9 @@ router.post('/create-cart-preference', async (req, res) => {
         success: `https://www.mariliaeiago.com.br/presentes/confirmacao?cart_id=${cart.id}`,
         failure: `https://www.mariliaeiago.com.br/presentes/confirmacao?cart_id=${cart.id}`,
         pending: `https://www.mariliaeiago.com.br/presentes/confirmacao?cart_id=${cart.id}`,
+      },
+      payment_methods: {
+        installments: 12 // Permitir parcelamento em até 12x
       },
       auto_return: 'approved',
       statement_descriptor: siteTitle

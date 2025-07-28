@@ -12,6 +12,8 @@ GET /api/mercadopago/payments
 
 Essa chamada busca os pagamentos usando o token configurado e registra cada um na tabela `Sale` com o método informado pelo Mercado Pago.
 
+As preferências de pagamento geradas pelas rotas `/api/mercadopago/create-preference` e `/api/mercadopago/create-cart-preference` agora permitem parcelamento em até 12 vezes no cartão de crédito.
+
 Para rodar os testes utilize:
 
 ```
